@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+// Read local.properties file
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
 }
 
 android {
@@ -19,6 +29,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // Add the API key from local.properties or use a default value for development
+        buildConfigField("String", "COIN_API_KEY", "\"${localProperties.getProperty("coin.api.key", "")}\"")
     }
 
     buildTypes {
@@ -39,6 +52,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"

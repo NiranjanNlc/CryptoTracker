@@ -1,6 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
+
+// Read local.properties file
+val localProperties = java.util.Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(java.io.FileInputStream(localPropertiesFile))
+    }
 }
 
 android {
@@ -18,6 +27,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // Add the API key from local.properties or use a default value for development
+        buildConfigField("String", "COIN_API_KEY", "\"${localProperties.getProperty("coin.api.key", "")}\"")
     }
 
     buildTypes {
@@ -38,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
@@ -63,6 +76,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.activity)
     
+    // Navigation Compose
+    implementation(libs.navigation.compose)
+    
     // Retrofit for API calls
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.moshi)
@@ -81,4 +97,9 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+    
+    // Additional testing dependencies
+    testImplementation("org.mockito:mockito-core:5.10.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
 }

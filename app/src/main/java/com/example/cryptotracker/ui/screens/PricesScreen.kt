@@ -5,20 +5,28 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.model.CryptoDataProvider
 import com.example.cryptotracker.ui.theme.CryptoGreen
 import com.example.cryptotracker.ui.theme.CryptoRed
+import com.example.cryptotracker.ui.viewmodel.CryptoListState
+import com.example.cryptotracker.ui.viewmodel.CryptoViewModel
 
 @Composable
-fun PricesScreen() {
-    val cryptoList = CryptoDataProvider.getMockCryptoList()
+fun PricesScreen(
+    viewModel: CryptoViewModel = viewModel(factory = CryptoViewModel.Factory())
+) {
+    // Collect state from ViewModel
+    val cryptoListState by viewModel.cryptoListState.collectAsState()
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -36,18 +44,90 @@ fun PricesScreen() {
             )
         }
         
-        // Crypto List
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            items(cryptoList) { crypto ->
-                CryptoListItem(crypto = crypto)
-                Divider(
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
+        // Content based on state
+        when (cryptoListState) {
+            is CryptoListState.Loading -> {
+                LoadingState()
+            }
+            is CryptoListState.Success -> {
+                val cryptoList = (cryptoListState as CryptoListState.Success).data
+                CryptoList(cryptoList = cryptoList)
+            }
+            is CryptoListState.Error -> {
+                val errorMessage = (cryptoListState as CryptoListState.Error).message
+                ErrorState(
+                    errorMessage = errorMessage,
+                    onRetry = { viewModel.loadCryptoPrices() }
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun CryptoList(cryptoList: List<CryptoCurrency>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        items(cryptoList) { crypto ->
+            CryptoListItem(crypto = crypto)
+            Divider(
+                color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(48.dp),
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+fun ErrorState(
+    errorMessage: String,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Error",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = errorMessage,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text("Retry")
         }
     }
 }
@@ -110,7 +190,7 @@ fun CryptoListItem(crypto: CryptoCurrency) {
     }
 }
 
-// preview screen for prices
+// Preview for crypto list item
 @Preview(showBackground = true)
 @Composable
 fun PreviewCryptoListItem() {
