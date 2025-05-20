@@ -64,6 +64,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.activity)
     
+    // Navigation Compose
+    implementation(libs.navigation.compose)
+    
     // Retrofit for API calls
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.moshi)
