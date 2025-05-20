@@ -1,0 +1,164 @@
+package com.example.cryptotracker.data.repository
+
+import com.example.cryptotracker.data.api.CoinGeckoApi
+import com.example.cryptotracker.data.model.CryptoDto
+import com.example.cryptotracker.data.util.Result
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import org.mockito.Mock
+import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.whenever
+
+@ExperimentalCoroutinesApi
+class CryptoRepositoryImplTest {
+
+    @Mock
+    private lateinit var coinGeckoApi: CoinGeckoApi
+
+    private lateinit var cryptoRepository: CryptoRepositoryImpl
+
+    private val testDispatcher = UnconfinedTestDispatcher()
+
+    @Before
+    fun setup() {
+        MockitoAnnotations.openMocks(this)
+        cryptoRepository = CryptoRepositoryImpl(coinGeckoApi)
+    }
+
+    @Test
+    fun `getCryptoPrices returns success with data when API call succeeds`() = runTest(testDispatcher) {
+        // Arrange
+        val mockCryptoList = listOf(
+            CryptoDto(
+                id = "bitcoin",
+                name = "Bitcoin",
+                symbol = "btc",
+                currentPrice = 50000.0,
+                priceChangePercentage24h = 2.5,
+                imageUrl = "https://example.com/bitcoin.png"
+            ),
+            CryptoDto(
+                id = "ethereum",
+                name = "Ethereum",
+                symbol = "eth",
+                currentPrice = 3000.0,
+                priceChangePercentage24h = 1.5,
+                imageUrl = "https://example.com/ethereum.png"
+            )
+        )
+        whenever(coinGeckoApi.getCryptoMarkets()).thenReturn(mockCryptoList)
+
+        // Act
+        val result = cryptoRepository.getCryptoPrices()
+
+        // Assert
+        assertTrue(result is Result.Success)
+        val data = (result as Result.Success).data
+        assertEquals(2, data.size)
+        assertEquals("bitcoin", data[0].id)
+        assertEquals("Bitcoin", data[0].name)
+        assertEquals("BTC", data[0].symbol) // Verify symbol is uppercase
+        assertEquals(50000.0, data[0].price, 0.001)
+        assertEquals(2.5, data[0].priceChangePercentage24h, 0.001)
+        assertEquals("https://example.com/bitcoin.png", data[0].imageUrl)
+    }
+
+    @Test
+    fun `getCryptoPrices returns error when API call fails`() = runTest(testDispatcher) {
+        // Arrange
+        val exception = RuntimeException("Network error")
+        whenever(coinGeckoApi.getCryptoMarkets()).thenThrow(exception)
+
+        // Act
+        val result = cryptoRepository.getCryptoPrices()
+
+        // Assert
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertEquals("Failed to fetch cryptocurrency prices", error.message)
+        assertEquals(exception, error.exception)
+    }
+
+    @Test
+    fun `getCryptoById returns success with data when API call succeeds and crypto exists`() = runTest(testDispatcher) {
+        // Arrange
+        val cryptoId = "bitcoin"
+        val mockCryptoList = listOf(
+            CryptoDto(
+                id = "bitcoin",
+                name = "Bitcoin",
+                symbol = "btc",
+                currentPrice = 50000.0,
+                priceChangePercentage24h = 2.5,
+                imageUrl = "https://example.com/bitcoin.png"
+            ),
+            CryptoDto(
+                id = "ethereum",
+                name = "Ethereum",
+                symbol = "eth",
+                currentPrice = 3000.0,
+                priceChangePercentage24h = 1.5,
+                imageUrl = "https://example.com/ethereum.png"
+            )
+        )
+        whenever(coinGeckoApi.getCryptoMarkets()).thenReturn(mockCryptoList)
+
+        // Act
+        val result = cryptoRepository.getCryptoById(cryptoId)
+
+        // Assert
+        assertTrue(result is Result.Success)
+        val data = (result as Result.Success).data
+        assertNotNull(data)
+        assertEquals("bitcoin", data?.id)
+        assertEquals("Bitcoin", data?.name)
+        assertEquals("BTC", data?.symbol)
+        assertEquals(50000.0, data?.price ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun `getCryptoById returns success with null when API call succeeds but crypto doesn't exist`() = runTest(testDispatcher) {
+        // Arrange
+        val cryptoId = "nonexistent"
+        val mockCryptoList = listOf(
+            CryptoDto(
+                id = "bitcoin",
+                name = "Bitcoin",
+                symbol = "btc",
+                currentPrice = 50000.0,
+                priceChangePercentage24h = 2.5,
+                imageUrl = "https://example.com/bitcoin.png"
+            )
+        )
+        whenever(coinGeckoApi.getCryptoMarkets()).thenReturn(mockCryptoList)
+
+        // Act
+        val result = cryptoRepository.getCryptoById(cryptoId)
+
+        // Assert
+        assertTrue(result is Result.Success)
+        val data = (result as Result.Success).data
+        assertNull(data)
+    }
+
+    @Test
+    fun `getCryptoById returns error when API call fails`() = runTest(testDispatcher) {
+        // Arrange
+        val cryptoId = "bitcoin"
+        val exception = RuntimeException("Network error")
+        whenever(coinGeckoApi.getCryptoMarkets()).thenThrow(exception)
+
+        // Act
+        val result = cryptoRepository.getCryptoById(cryptoId)
+
+        // Assert
+        assertTrue(result is Result.Error)
+        val error = result as Result.Error
+        assertEquals("Failed to fetch cryptocurrency with id: $cryptoId", error.message)
+        assertEquals(exception, error.exception)
+    }
+}
