@@ -1,11 +1,15 @@
 package com.example.cryptotracker.di
 
+import android.content.Context
+import com.example.cryptotracker.CryptoTrackerApplication
 import com.example.cryptotracker.data.api.ApiConstants
 import com.example.cryptotracker.data.api.CoinApi
 import com.example.cryptotracker.data.api.CoinGeckoApi
 import com.example.cryptotracker.data.repository.CoinApiRepositoryImpl
 import com.example.cryptotracker.data.repository.CryptoRepository
 import com.example.cryptotracker.data.repository.CryptoRepositoryImpl
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -29,6 +33,13 @@ object NetworkModule {
         return Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
             .build()
+    }
+    
+    /**
+     * Provides Gson instance for JSON serialization/deserialization
+     */
+    fun provideGson(): Gson {
+        return GsonBuilder().create()
     }
     
     /**
@@ -89,12 +100,19 @@ object NetworkModule {
     }
     
     /**
+     * Provides application context
+     */
+    private fun provideContext(): Context {
+        return CryptoTrackerApplication.getInstance()
+    }
+    
+    /**
      * Provides CryptoRepository implementation
-     * Currently using CoinAPI implementation
+     * Currently using CoinAPI implementation with caching support
      */
     fun provideCryptoRepository(): CryptoRepository {
-        // Use CoinAPI implementation instead of CoinGecko
-        return CoinApiRepositoryImpl(provideCoinApi())
+        // Use CoinAPI implementation with caching support
+        return CoinApiRepositoryImpl(provideCoinApi(), provideContext())
         
         // To switch back to CoinGecko, uncomment the line below and comment the line above
         // return CryptoRepositoryImpl(provideCoinGeckoApi())

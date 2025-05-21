@@ -27,5 +27,10 @@ class CryptoTrackerApplication : Application() {
         fun getRepository(): CryptoRepository {
             return instance.cryptoRepository
         }
+        
+        // Accessor for the application context
+        fun getInstance(): CryptoTrackerApplication {
+            return instance
+        }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.model.CryptoDataProvider
+import com.example.cryptotracker.ui.components.CacheTestControls
 import com.example.cryptotracker.ui.theme.CryptoGreen
 import com.example.cryptotracker.ui.theme.CryptoRed
 import com.example.cryptotracker.ui.viewmodel.CryptoListState
@@ -43,6 +44,12 @@ fun PricesScreen(
                 textAlign = TextAlign.Center
             )
         }
+        
+        // Cache Testing Controls
+        CacheTestControls(
+            onRefresh = { viewModel.loadCryptoPrices() },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
         
         // Content based on state
         when (cryptoListState) {

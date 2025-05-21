@@ -88,6 +88,9 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.moshi.kotlin)
     
+    // Gson for JSON serialization/deserialization
+    implementation(libs.gson)
+    
     // WorkManager for periodic updates
     implementation(libs.workmanager.ktx)
     
