@@ -94,6 +94,9 @@ dependencies {
     // WorkManager for periodic updates
     implementation(libs.workmanager.ktx)
     
+    // Security Crypto for EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

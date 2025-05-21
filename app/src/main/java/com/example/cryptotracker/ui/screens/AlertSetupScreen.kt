@@ -10,17 +10,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.cryptotracker.model.Alert
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.navigation.NavDestinations
 import com.example.cryptotracker.ui.viewmodel.AlertViewModel
 import com.example.cryptotracker.ui.viewmodel.CryptoViewModel
 import kotlinx.coroutines.launch
+import java.util.UUID
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +52,12 @@ fun AlertSetupScreen(
     
     // Validation state
     var isFormValid by remember { mutableStateOf(false) }
+    
+    // Error message state
+    var validationError by remember { mutableStateOf<String?>(null) }
+    
+    // Context for showing toast messages
+    val context = LocalContext.current
     
     // Coroutine scope for launching suspend functions
     val coroutineScope = rememberCoroutineScope()
@@ -106,7 +116,13 @@ fun AlertSetupScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(),
+                        isError = validationError != null && selectedCrypto == null,
+                        supportingText = {
+                            if (validationError != null && selectedCrypto == null) {
+                                Text("Please select a cryptocurrency", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                     
                     ExposedDropdownMenu(
@@ -122,6 +138,7 @@ fun AlertSetupScreen(
                                 onClick = {
                                     selectedCrypto = crypto
                                     dropdownExpanded = false
+                                    validationError = null
                                 }
                             )
                         }
@@ -131,14 +148,26 @@ fun AlertSetupScreen(
                 // Target price input
                 OutlinedTextField(
                     value = targetPrice,
-                    onValueChange = { targetPrice = it },
+                    onValueChange = { 
+                        targetPrice = it
+                        validationError = null
+                    },
                     label = { Text("Target Price ($)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = validationError != null && (targetPrice.isBlank() || targetPrice.toDoubleOrNull() == null || targetPrice.toDoubleOrNull()!! <= 0),
                     supportingText = {
-                        if (targetPrice.isNotBlank() && targetPrice.toDoubleOrNull() == null) {
-                            Text("Please enter a valid number", color = MaterialTheme.colorScheme.error)
+                        when {
+                            validationError != null && targetPrice.isBlank() -> {
+                                Text("Please enter a price", color = MaterialTheme.colorScheme.error)
+                            }
+                            validationError != null && targetPrice.toDoubleOrNull() == null -> {
+                                Text("Please enter a valid number", color = MaterialTheme.colorScheme.error)
+                            }
+                            validationError != null && targetPrice.toDoubleOrNull() != null && targetPrice.toDoubleOrNull()!! <= 0 -> {
+                                Text("Price must be greater than 0", color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 )
@@ -184,43 +213,45 @@ fun AlertSetupScreen(
                 // Save alert button
                 Button(
                     onClick = {
+                        // Validate inputs
+                        if (selectedCrypto == null) {
+                            validationError = "Please select a cryptocurrency"
+                            return@Button
+                        }
+                        
+                        val priceValue = targetPrice.toDoubleOrNull()
+                        if (priceValue == null || priceValue <= 0) {
+                            validationError = "Please enter a valid price greater than 0"
+                            return@Button
+                        }
+                        
                         selectedCrypto?.let { crypto ->
-                            val priceValue = targetPrice.toDoubleOrNull() ?: 0.0
-                            
                             try {
-                                // Only use one approach: pass data back to the previous screen
-                                // This is the preferred approach as it allows the AlertsScreen to decide
-                                // what to do with the data
-                                navController.previousBackStackEntry?.savedStateHandle?.set(
-                                    "new_alert",
-                                    com.example.cryptotracker.model.CryptoAlert(
-                                        id = java.util.UUID.randomUUID().toString(),
-                                        cryptoName = crypto.name,
-                                        cryptoSymbol = crypto.symbol,
-                                        targetPrice = priceValue,
-                                        isAboveTarget = isAboveTarget
-                                    )
-                                )
+                                // Create a new Alert and save it directly using the ViewModel
+                                val success = alertViewModel.addAlert(crypto, priceValue, isAboveTarget)
                                 
-                                // Navigate back
-                                navController.navigateUp()
-                            } catch (e: Exception) {
-                                // Handle any exceptions that might occur
-                                error?.let {
-                                    // If there's already an error, don't overwrite it
-                                } ?: run {
-                                    // Show error message
-                                    alertViewModel.setError("Failed to save alert: ${e.message}")
+                                if (success) {
+                                    // Show success toast
+                                    Toast.makeText(context, "Alert created successfully", Toast.LENGTH_SHORT).show()
+                                    
+                                    // Navigate back to the alerts screen
+                                    navController.navigateUp()
+                                } else {
+                                    // Show error toast
+                                    Toast.makeText(context, "Failed to save alert", Toast.LENGTH_SHORT).show()
                                 }
+                            } catch (e: Exception) {
+                                alertViewModel.setError("Failed to create alert: ${e.message}")
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
+                    enabled = isFormValid,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    enabled = isFormValid
+                        .padding(vertical = 8.dp)
                 ) {
-                    Text("Save Alert")
+                    Text("Create Alert")
                 }
             }
             
@@ -234,7 +265,7 @@ fun AlertSetupScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun AlertSetupScreenPreview() {
     AlertSetupScreen(navController = rememberNavController())

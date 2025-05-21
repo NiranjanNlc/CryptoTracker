@@ -1,5 +1,10 @@
 package com.example.cryptotracker.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -19,11 +25,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.cryptotracker.model.Alert
 import com.example.cryptotracker.model.CryptoAlert
+import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.navigation.NavDestinations
 import com.example.cryptotracker.ui.theme.CryptoGreen
 import com.example.cryptotracker.ui.theme.CryptoRed
 import com.example.cryptotracker.ui.viewmodel.AlertViewModel
+import com.example.cryptotracker.util.AlertConverter
+import android.widget.Toast
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,30 +52,12 @@ fun AlertsScreen(
 ) {
     // Collect alerts from the ViewModel
     val alerts by viewModel.alerts.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     
-    // Observe for new alerts from the AlertSetupScreen
-    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-    val newAlert = savedStateHandle?.get<CryptoAlert>("new_alert")
-    
-    // Add the new alert to our list if it exists
-    LaunchedEffect(newAlert) {
-        newAlert?.let { alert ->
-            // Add the new alert using the ViewModel
-            val crypto = alert.run {
-                com.example.cryptotracker.model.CryptoCurrency(
-                    id = id,
-                    name = cryptoName,
-                    symbol = cryptoSymbol,
-                    price = targetPrice,
-                    priceChangePercentage24h = 0.0,
-                    imageUrl = ""
-                )
-            }
-            viewModel.addAlert(crypto, alert.targetPrice, alert.isAboveTarget)
-            
-            // Clear the saved state to avoid duplicate additions
-            savedStateHandle.remove<CryptoAlert>("new_alert")
-        }
+    // Refresh alerts when screen is shown
+    LaunchedEffect(Unit) {
+        viewModel.refreshAlerts()
     }
     
     Scaffold(
@@ -92,11 +93,23 @@ fun AlertsScreen(
                 alerts = alerts,
                 onDeleteAlert = { alertToDelete ->
                     // Delete the alert using the ViewModel
-                    viewModel.deleteAlert(alertToDelete.id)
+                    coroutineScope.launch {
+                        val success = viewModel.deleteAlert(alertToDelete.id)
+                        if (success) {
+                            Toast.makeText(context, "Alert deleted", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to delete alert", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 },
                 onToggleAlert = { alert, isEnabled ->
                     // Toggle the alert using the ViewModel
-                    viewModel.toggleAlertEnabled(alert.id, isEnabled)
+                    coroutineScope.launch {
+                        val success = viewModel.toggleAlertEnabled(alert.id, isEnabled)
+                        if (!success) {
+                            Toast.makeText(context, "Failed to update alert", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 },
                 modifier = Modifier.padding(paddingValues)
             )
@@ -106,9 +119,9 @@ fun AlertsScreen(
 
 @Composable
 fun AlertsList(
-    alerts: List<CryptoAlert>,
-    onDeleteAlert: (CryptoAlert) -> Unit = {},
-    onToggleAlert: (CryptoAlert, Boolean) -> Unit = { _, _ -> },
+    alerts: List<Alert>,
+    onDeleteAlert: (Alert) -> Unit = {},
+    onToggleAlert: (Alert, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -118,20 +131,116 @@ fun AlertsList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        items(alerts) { alert ->
-            AlertItem(
-                alert = alert,
-                onDelete = { onDeleteAlert(alert) },
-                onToggle = { isEnabled -> onToggleAlert(alert, isEnabled) }
+        items(
+            items = alerts,
+            key = { it.id }
+        ) { alert ->
+            var isDeleted by remember { mutableStateOf(false) }
+            
+            AnimatedVisibility(
+                visible = !isDeleted,
+                exit = shrinkHorizontally(
+                    animationSpec = tween(durationMillis = 300),
+                    shrinkTowards = Alignment.Start
+                ) + fadeOut(animationSpec = tween(durationMillis = 300))
+            ) {
+                SwipeToDeleteItem(
+                    onDelete = {
+                        isDeleted = true
+                        onDeleteAlert(alert)
+                    }
+                ) {
+                    AlertItem(
+                        alert = alert,
+                        onDelete = {
+                            isDeleted = true
+                            onDeleteAlert(alert)
+                        },
+                        onToggle = { isEnabled -> onToggleAlert(alert, isEnabled) }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun SwipeToDeleteItem(
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val density = LocalDensity.current
+    var offsetX by remember { mutableStateOf(0f) }
+    val threshold = with(density) { -100.dp.toPx() }
+    
+    Box {
+        // Background (shown when swiping)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(MaterialTheme.colorScheme.errorContainer)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete",
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
         }
+        
+        // Foreground (the actual item)
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        // Only allow swiping left (negative delta)
+                        if (delta < 0 || offsetX < 0) {
+                            offsetX += delta
+                        }
+                        
+                        // If swiped far enough, trigger delete
+                        if (offsetX < threshold) {
+                            onDelete()
+                            offsetX = 0f
+                        }
+                    },
+                    onDragStopped = {
+                        // Spring back if not deleted
+                        offsetX = 0f
+                    }
+                )
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun DismissBackground() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Delete",
+            tint = MaterialTheme.colorScheme.onErrorContainer
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertItem(
-    alert: CryptoAlert,
+    alert: Alert,
     onDelete: () -> Unit = {},
     onToggle: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -171,13 +280,13 @@ fun AlertItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val alertText = if (alert.isAboveTarget) {
-                        "Above $${alert.targetPrice}"
+                    val alertText = if (alert.isUpperBound) {
+                        "Above $${alert.threshold}"
                     } else {
-                        "Below $${alert.targetPrice}"
+                        "Below $${alert.threshold}"
                     }
                     
-                    val alertColor = if (alert.isAboveTarget) CryptoGreen else CryptoRed
+                    val alertColor = if (alert.isUpperBound) CryptoGreen else CryptoRed
                     
                     Text(
                         text = alertText,
@@ -210,30 +319,39 @@ fun AlertItem(
 @Composable
 fun EmptyAlertsContent() {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "No alerts set yet",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+        Icon(
+            imageVector = Icons.Default.Notifications,
+            contentDescription = null,
+            modifier = Modifier.size(72.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         )
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Tap the + button to create your first price alert",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "No Price Alerts",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Create alerts to get notified when cryptocurrency prices reach your target",
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 32.dp)
+            textAlign = TextAlign.Center
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun AlertsScreenPreview() {
     AlertsScreen()
