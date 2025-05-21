@@ -26,7 +26,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.cryptotracker.model.Alert
-import com.example.cryptotracker.model.CryptoAlert
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.navigation.NavDestinations
 import com.example.cryptotracker.ui.theme.CryptoGreen
