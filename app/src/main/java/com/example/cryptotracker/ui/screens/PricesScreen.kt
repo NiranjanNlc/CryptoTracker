@@ -5,6 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,8 +34,9 @@ fun PricesScreen(
     // Collect state from ViewModel
     val cryptoListState by viewModel.cryptoListState.collectAsState()
     val scrollState = rememberScrollState()
-    Column()
-    {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
         // Header
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -46,34 +49,50 @@ fun PricesScreen(
                 textAlign = TextAlign.Center
             )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-        ) {
-            // Cache Testing Controls
-            CacheTestControls(
-                onRefresh = { viewModel.loadCryptoPrices() },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            // WorkManager Testing Controls
-            WorkManagerTestControls(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            // Content based on state
-            when (cryptoListState) {
-                is CryptoListState.Loading -> {
+        
+        // Content based on state
+        when (cryptoListState) {
+            is CryptoListState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     LoadingState()
                 }
+            }
 
-                is CryptoListState.Success -> {
+            is CryptoListState.Success -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .verticalScroll(scrollState)
+                ) {
+                    // Cache Testing Controls
+                    CacheTestControls(
+                        onRefresh = { viewModel.loadCryptoPrices() },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    // WorkManager Testing Controls
+                    WorkManagerTestControls(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
                     val cryptoList = (cryptoListState as CryptoListState.Success).data
                     CryptoListNonScrollable(cryptoList = cryptoList)
                 }
+            }
 
-                is CryptoListState.Error -> {
+            is CryptoListState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     val errorMessage = (cryptoListState as CryptoListState.Error).message
                     ErrorState(
                         errorMessage = errorMessage,
@@ -104,13 +123,22 @@ fun CryptoListNonScrollable(cryptoList: List<CryptoCurrency>) {
 
 @Composable
 fun LoadingState() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(16.dp)
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(48.dp),
             color = MaterialTheme.colorScheme.primary
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Loading cryptocurrency data...",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -122,13 +150,23 @@ fun ErrorState(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Error icon
+        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Filled.Warning,
+            contentDescription = "Error",
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(64.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         Text(
-            text = "Error",
+            text = "Unable to Load Data",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.error
         )
@@ -138,17 +176,25 @@ fun ErrorState(
         Text(
             text = errorMessage,
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary
-            )
+            ),
+            modifier = Modifier.padding(8.dp)
         ) {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Filled.Refresh,
+                contentDescription = "Retry",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Retry")
         }
     }
