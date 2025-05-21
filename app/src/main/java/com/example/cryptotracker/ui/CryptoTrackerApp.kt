@@ -20,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.cryptotracker.navigation.NavDestinations
 import com.example.cryptotracker.ui.screens.AlertsScreen
+import com.example.cryptotracker.ui.screens.AlertSetupScreen
 import com.example.cryptotracker.ui.screens.PricesScreen
 
 data class BottomNavItem(
@@ -107,7 +108,10 @@ fun CryptoTrackerApp() {
                 PricesScreen()
             }
             composable(NavDestinations.Alerts.route) {
-                AlertsScreen()
+                AlertsScreen(navController = navController)
+            }
+            composable(NavDestinations.AlertSetup.route) {
+                AlertSetupScreen(navController = navController)
             }
         }
     }
@@ -123,5 +127,5 @@ fun PreviewPricesScreen() {
 @Preview(showBackground = true, name = "Alerts Screen Preview")
 @Composable
 fun PreviewAlertsScreen() {
-    AlertsScreen()
+    AlertsScreen(navController = rememberNavController())
 }

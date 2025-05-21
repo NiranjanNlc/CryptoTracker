@@ -6,4 +6,5 @@ package com.example.cryptotracker.navigation
 sealed class NavDestinations(val route: String) {
     object Prices : NavDestinations("prices")
     object Alerts : NavDestinations("alerts")
+    object AlertSetup : NavDestinations("alert_setup")
 }
