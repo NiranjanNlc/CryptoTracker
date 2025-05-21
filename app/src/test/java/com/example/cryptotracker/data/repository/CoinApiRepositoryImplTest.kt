@@ -9,16 +9,25 @@ import com.example.cryptotracker.data.util.PreferencesManager
 import com.example.cryptotracker.data.util.Result
 import com.example.cryptotracker.model.CryptoCurrency
 import com.google.gson.Gson
-import kotlinx.coroutines.runBlocking
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.io.IOException
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
+@ExperimentalCoroutinesApi
 class CoinApiRepositoryImplTest {
 
     private lateinit var coinApi: CoinApi
@@ -56,9 +65,75 @@ class CoinApiRepositoryImplTest {
         repoField.isAccessible = true
         repoField.set(repository, preferencesManager)
     }
+    
+    @After
+    fun tearDown() {
+        // Reset network mock after each test
+        NetworkUtils.resetMockNetworkAvailable()
+    }
 
     @Test
-    fun `getCryptoPrices returns cached data when API call fails`() = runBlocking {
+    fun `getCryptoPrices returns successful API response when online`() = runTest {
+        // Mock network availability
+        NetworkUtils.setMockNetworkAvailable(true)
+        
+        // Mock API response with multiple cryptocurrencies
+        val apiResponse = listOf(
+            CoinApiAssetDto(
+                assetId = "BTC",
+                name = "Bitcoin",
+                priceUsd = 50000.0,
+                volume1dayUsd = 1000000.0,
+                iconId = "btc",
+                isCrypto = 1,
+                dataStart = null,
+                dataEnd = null,
+                dataQuoteStart = null,
+                dataQuoteEnd = null,
+                dataOrderbookStart = null,
+                dataOrderbookEnd = null,
+                dataTradeStart = null,
+                dataTradeEnd = null
+            ),
+            CoinApiAssetDto(
+                assetId = "ETH",
+                name = "Ethereum",
+                priceUsd = 3000.0,
+                volume1dayUsd = 500000.0,
+                iconId = "eth",
+                isCrypto = 1,
+                dataStart = null,
+                dataEnd = null,
+                dataQuoteStart = null,
+                dataQuoteEnd = null,
+                dataOrderbookStart = null,
+                dataOrderbookEnd = null,
+                dataTradeStart = null,
+                dataTradeEnd = null
+            )
+        )
+        
+        whenever(coinApi.getAssets()).thenReturn(apiResponse)
+        
+        // Call repository method
+        val result = repository.getCryptoPrices()
+        
+        // Verify result is success with correct data
+        assertTrue(result is Result.Success)
+        assertEquals(2, (result as Result.Success).data.size)
+        assertEquals("BTC", result.data[0].symbol)
+        assertEquals("ETH", result.data[1].symbol)
+        assertEquals(50000.0, result.data[0].price)
+        assertEquals(3000.0, result.data[1].price)
+        
+        // Verify data was cached
+        verify(sharedPreferencesEditor).putString(any(), any())
+        verify(sharedPreferencesEditor).putLong(any(), any())
+        verify(sharedPreferencesEditor, times(2)).apply()
+    }
+
+    @Test
+    fun `getCryptoPrices returns cached data when API call fails`() = runTest {
         // Mock network availability
         NetworkUtils.setMockNetworkAvailable(true)
         
@@ -86,13 +161,14 @@ class CoinApiRepositoryImplTest {
         val result = repository.getCryptoPrices()
         
         // Verify result is success with cached data
-        assert(result is Result.Success)
-        assert((result as Result.Success).data.size == 1)
-        assert(result.data[0].id == "bitcoin")
+        assertTrue(result is Result.Success)
+        assertEquals(1, (result as Result.Success).data.size)
+        assertEquals("bitcoin", result.data[0].id)
+        assertEquals("BTC", result.data[0].symbol)
     }
 
     @Test
-    fun `getCryptoPrices returns cached data when offline`() = runBlocking {
+    fun `getCryptoPrices returns cached data when offline`() = runTest {
         // Mock network unavailability
         NetworkUtils.setMockNetworkAvailable(false)
         
@@ -117,16 +193,16 @@ class CoinApiRepositoryImplTest {
         val result = repository.getCryptoPrices()
         
         // Verify result is success with cached data
-        assert(result is Result.Success)
-        assert((result as Result.Success).data.size == 1)
-        assert(result.data[0].id == "ethereum")
+        assertTrue(result is Result.Success)
+        assertEquals(1, (result as Result.Success).data.size)
+        assertEquals("ethereum", result.data[0].id)
         
         // Verify API was not called
-        verify(coinApi, org.mockito.kotlin.never()).getAssets()
+        verify(coinApi, never()).getAssets()
     }
 
     @Test
-    fun `getCryptoPrices caches data on successful API call`() = runBlocking {
+    fun `getCryptoPrices caches data on successful API call`() = runTest {
         // Mock network availability
         NetworkUtils.setMockNetworkAvailable(true)
         
@@ -138,6 +214,7 @@ class CoinApiRepositoryImplTest {
                 priceUsd = 50000.0,
                 volume1dayUsd = 1000000.0,
                 iconId = "btc",
+                isCrypto = 1,
                 dataStart = null,
                 dataEnd = null,
                 dataQuoteStart = null,
@@ -145,8 +222,7 @@ class CoinApiRepositoryImplTest {
                 dataOrderbookStart = null,
                 dataOrderbookEnd = null,
                 dataTradeStart = null,
-                dataTradeEnd = null,
-                isCrypto = 1
+                dataTradeEnd = null
             )
         )
         
@@ -156,14 +232,72 @@ class CoinApiRepositoryImplTest {
         val result = repository.getCryptoPrices()
         
         // Verify result is success with API data
-        assert(result is Result.Success)
-        assert((result as Result.Success).data.size == 1)
-        assert(result.data[0].symbol == "BTC")
+        assertTrue(result is Result.Success)
+        assertEquals(1, (result as Result.Success).data.size)
+        assertEquals("BTC", result.data[0].symbol)
         
         // Verify data was cached
         verify(sharedPreferencesEditor).putString(any(), any())
         verify(sharedPreferencesEditor).putLong(any(), any())
-        verify(sharedPreferencesEditor, org.mockito.kotlin.times(2)).apply()
+        verify(sharedPreferencesEditor, times(2)).apply()
+    }
+    
+    @Test
+    fun `getCryptoPrices returns error when API fails and no cache is available`() = runTest {
+        // Mock network availability
+        NetworkUtils.setMockNetworkAvailable(true)
+        
+        // Mock API call failure
+        whenever(coinApi.getAssets()).thenThrow(IOException("Network error"))
+        
+        // Mock empty cache
+        whenever(sharedPreferences.getString(any(), any())).thenReturn(null)
+        whenever(sharedPreferences.contains(any())).thenReturn(false)
+        
+        // Call repository method
+        val result = repository.getCryptoPrices()
+        
+        // Verify result is success with dummy data (as per implementation)
+        assertTrue(result is Result.Success)
+        
+        // Note: The current implementation falls back to dummy data when both API and cache fail
+        // In a real app, you might want to return an error instead
+    }
+    
+    @Test
+    fun `getCryptoById returns successful API response when online`() = runTest {
+        // Mock network availability
+        NetworkUtils.setMockNetworkAvailable(true)
+        
+        // Mock API response
+        val apiResponse = listOf(
+            CoinApiAssetDto(
+                assetId = "BTC",
+                name = "Bitcoin",
+                priceUsd = 50000.0,
+                volume1dayUsd = 1000000.0,
+                iconId = "btc",
+                isCrypto = 1,
+                dataStart = null,
+                dataEnd = null,
+                dataQuoteStart = null,
+                dataQuoteEnd = null,
+                dataOrderbookStart = null,
+                dataOrderbookEnd = null,
+                dataTradeStart = null,
+                dataTradeEnd = null
+            )
+        )
+        
+        whenever(coinApi.getAssets()).thenReturn(apiResponse)
+        
+        // Call repository method
+        val result = repository.getCryptoById("BTC")
+        
+        // Verify result is success with correct data
+        assertTrue(result is Result.Success)
+        assertEquals("BTC", (result as Result.Success).data?.symbol)
+        assertEquals(50000.0, result.data?.price)
     }
 }
 

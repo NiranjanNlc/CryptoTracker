@@ -5,12 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.cryptotracker.CryptoTrackerApplication
 import com.example.cryptotracker.data.repository.CryptoRepository
+import com.example.cryptotracker.data.util.NetworkUtils
 import com.example.cryptotracker.data.util.Result
 import com.example.cryptotracker.model.CryptoCurrency
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okio.IOException
+import retrofit2.HttpException
 
 /**
  * ViewModel for cryptocurrency data
@@ -23,6 +26,9 @@ class CryptoViewModel(
     private val _cryptoListState = MutableStateFlow<CryptoListState>(CryptoListState.Loading)
     val cryptoListState: StateFlow<CryptoListState> = _cryptoListState.asStateFlow()
     
+    // Track loading state to prevent multiple simultaneous loads
+    private var isLoading = false
+    
     init {
         // Load cryptocurrency prices when ViewModel is created
         loadCryptoPrices()
@@ -30,23 +36,47 @@ class CryptoViewModel(
     
     /**
      * Load cryptocurrency prices from repository
+     * Includes error handling for different types of failures
      */
     fun loadCryptoPrices() {
+        // Prevent multiple simultaneous loads
+        if (isLoading) return
+        
         viewModelScope.launch {
+            isLoading = true
             _cryptoListState.value = CryptoListState.Loading
             
-            when (val result = repository.getCryptoPrices()) {
-                is Result.Success -> {
-                    _cryptoListState.value = CryptoListState.Success(result.data)
+            try {
+                when (val result = repository.getCryptoPrices()) {
+                    is Result.Success -> {
+                        if (result.data.isEmpty()) {
+                            _cryptoListState.value = CryptoListState.Error(
+                                "No cryptocurrency data available"
+                            )
+                        } else {
+                            _cryptoListState.value = CryptoListState.Success(result.data)
+                        }
+                    }
+                    is Result.Error -> {
+                        // Provide more specific error messages based on the exception
+                        val errorMessage = when (result.exception) {
+                            is IOException -> "Network error. Please check your connection and try again."
+                            is HttpException -> "Server error. Please try again later."
+                            else -> result.message ?: "Unknown error occurred"
+                        }
+                        _cryptoListState.value = CryptoListState.Error(errorMessage)
+                    }
+                    is Result.Loading -> {
+                        _cryptoListState.value = CryptoListState.Loading
+                    }
                 }
-                is Result.Error -> {
-                    _cryptoListState.value = CryptoListState.Error(
-                        result.message ?: "Unknown error occurred"
-                    )
-                }
-                is Result.Loading -> {
-                    _cryptoListState.value = CryptoListState.Loading
-                }
+            } catch (e: Exception) {
+                // Catch any unexpected exceptions
+                _cryptoListState.value = CryptoListState.Error(
+                    "An unexpected error occurred: ${e.message}"
+                )
+            } finally {
+                isLoading = false
             }
         }
     }
