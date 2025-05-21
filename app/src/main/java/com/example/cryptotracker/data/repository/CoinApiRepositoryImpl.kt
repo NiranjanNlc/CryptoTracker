@@ -8,6 +8,7 @@ import com.example.cryptotracker.data.util.NetworkUtils
 import com.example.cryptotracker.data.util.PreferencesManager
 import com.example.cryptotracker.data.util.Result
 import com.example.cryptotracker.model.CryptoCurrency
+import com.example.cryptotracker.model.CryptoDataProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -107,6 +108,11 @@ class CoinApiRepositoryImpl(
         } else {
             val errorMessage = "Failed to fetch cryptocurrency prices and no cached data available"
             Log.e("CoinApiRepository", errorMessage)
+            // get the dummy data
+            val dummyData = CryptoDataProvider.getMockCryptoList()
+            Log.i("CoinApiRepository", "Using dummy data with ${dummyData.size} cryptocurrencies")
+            preferencesManager.saveCryptoList(dummyData)
+            Result.Success(dummyData)
             Result.Error(errorMessage, error)
         }
     }

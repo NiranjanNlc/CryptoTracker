@@ -2,6 +2,7 @@ package com.example.cryptotracker
 
 import android.app.Application
 import com.example.cryptotracker.data.repository.CryptoRepository
+import com.example.cryptotracker.data.worker.WorkManagerUtil
 import com.example.cryptotracker.di.NetworkModule
 
 /**
@@ -17,6 +18,9 @@ class CryptoTrackerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        
+        // Schedule periodic price updates using WorkManager
+        WorkManagerUtil.schedulePriceUpdates(this)
     }
     
     companion object {
