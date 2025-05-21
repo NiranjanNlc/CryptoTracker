@@ -49,20 +49,20 @@ fun CryptoTrackerApp() {
     )
     
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "CryptoTracker",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        },
+//        topBar = {
+//            CenterAlignedTopAppBar(
+//                title = {
+//                    Text(
+//                        text = "CryptoTracker",
+//                        style = MaterialTheme.typography.headlineSmall
+//                    )
+//                },
+//                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+//                    containerColor = MaterialTheme.colorScheme.primary,
+//                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+//                )
+//            )
+//        },
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()

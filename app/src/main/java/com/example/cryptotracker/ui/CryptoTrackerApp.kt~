@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -110,4 +111,17 @@ fun CryptoTrackerApp() {
             }
         }
     }
+}
+
+
+@Preview(showBackground = true, name = "Prices Screen Preview")
+@Composable
+fun PreviewPricesScreen() {
+    PricesScreen()
+}
+
+@Preview(showBackground = true, name = "Alerts Screen Preview")
+@Composable
+fun PreviewAlertsScreen() {
+    AlertsScreen()
 }

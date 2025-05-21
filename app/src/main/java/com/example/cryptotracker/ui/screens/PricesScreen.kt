@@ -3,6 +3,8 @@ package com.example.cryptotracker.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -17,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.model.CryptoDataProvider
 import com.example.cryptotracker.ui.components.CacheTestControls
+import com.example.cryptotracker.ui.components.WorkManagerTestControls
 import com.example.cryptotracker.ui.theme.CryptoGreen
 import com.example.cryptotracker.ui.theme.CryptoRed
 import com.example.cryptotracker.ui.viewmodel.CryptoListState
@@ -28,10 +31,9 @@ fun PricesScreen(
 ) {
     // Collect state from ViewModel
     val cryptoListState by viewModel.cryptoListState.collectAsState()
-    
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    val scrollState = rememberScrollState()
+    Column()
+    {
         // Header
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -44,40 +46,53 @@ fun PricesScreen(
                 textAlign = TextAlign.Center
             )
         }
-        
-        // Cache Testing Controls
-        CacheTestControls(
-            onRefresh = { viewModel.loadCryptoPrices() },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        
-        // Content based on state
-        when (cryptoListState) {
-            is CryptoListState.Loading -> {
-                LoadingState()
-            }
-            is CryptoListState.Success -> {
-                val cryptoList = (cryptoListState as CryptoListState.Success).data
-                CryptoList(cryptoList = cryptoList)
-            }
-            is CryptoListState.Error -> {
-                val errorMessage = (cryptoListState as CryptoListState.Error).message
-                ErrorState(
-                    errorMessage = errorMessage,
-                    onRetry = { viewModel.loadCryptoPrices() }
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+        ) {
+            // Cache Testing Controls
+            CacheTestControls(
+                onRefresh = { viewModel.loadCryptoPrices() },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            // WorkManager Testing Controls
+            WorkManagerTestControls(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            // Content based on state
+            when (cryptoListState) {
+                is CryptoListState.Loading -> {
+                    LoadingState()
+                }
+
+                is CryptoListState.Success -> {
+                    val cryptoList = (cryptoListState as CryptoListState.Success).data
+                    CryptoListNonScrollable(cryptoList = cryptoList)
+                }
+
+                is CryptoListState.Error -> {
+                    val errorMessage = (cryptoListState as CryptoListState.Error).message
+                    ErrorState(
+                        errorMessage = errorMessage,
+                        onRetry = { viewModel.loadCryptoPrices() }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun CryptoList(cryptoList: List<CryptoCurrency>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
+fun CryptoListNonScrollable(cryptoList: List<CryptoCurrency>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        items(cryptoList) { crypto ->
+        cryptoList.forEach { crypto ->
             CryptoListItem(crypto = crypto)
             Divider(
                 color = MaterialTheme.colorScheme.outlineVariant,
