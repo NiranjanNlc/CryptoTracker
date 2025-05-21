@@ -113,7 +113,6 @@ class CoinApiRepositoryImpl(
             Log.i("CoinApiRepository", "Using dummy data with ${dummyData.size} cryptocurrencies")
             preferencesManager.saveCryptoList(dummyData)
             Result.Success(dummyData)
-            Result.Error(errorMessage, error)
         }
     }
     
