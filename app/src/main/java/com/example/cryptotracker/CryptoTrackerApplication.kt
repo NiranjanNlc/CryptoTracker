@@ -4,7 +4,9 @@ import android.app.Application
 import android.util.Log
 import com.example.cryptotracker.data.repository.CryptoRepository
 import com.example.cryptotracker.data.util.FallbackPreferencesManager
+import com.example.cryptotracker.data.util.NotificationUtil
 import com.example.cryptotracker.data.util.SecurePreferencesManager
+import com.example.cryptotracker.data.worker.SimulationManagerUtil
 import com.example.cryptotracker.data.worker.WorkManagerUtil
 import com.example.cryptotracker.di.NetworkModule
 import com.example.cryptotracker.util.AlertMigrationHelper
@@ -38,12 +40,23 @@ class CryptoTrackerApplication : Application() {
         FallbackPreferencesManager(applicationContext)
     }
     
+    // Simulation manager utility
+    val simulationManagerUtil: SimulationManagerUtil by lazy {
+        SimulationManagerUtil(applicationContext, cryptoRepository)
+    }
+    
     override fun onCreate() {
         super.onCreate()
         instance = this
         
+        // Initialize notification channel for price alerts
+        NotificationUtil.createNotificationChannel(this)
+        
         // Schedule periodic price updates using WorkManager
         WorkManagerUtil.schedulePriceUpdates(this)
+        
+        // Initialize simulation manager
+        simulationManagerUtil
         
         try {
             // Try to initialize secure storage
@@ -90,6 +103,11 @@ class CryptoTrackerApplication : Application() {
         // Get fallback preferences manager
         fun getFallbackPreferencesManager(): FallbackPreferencesManager {
             return instance.fallbackPreferencesManager
+        }
+        
+        // Get simulation manager utility
+        fun getSimulationManagerUtil(): SimulationManagerUtil {
+            return instance.simulationManagerUtil
         }
         
         // Accessor for the application context

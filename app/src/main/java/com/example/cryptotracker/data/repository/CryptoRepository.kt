@@ -21,4 +21,12 @@ interface CryptoRepository {
      * @return Result containing cryptocurrency data
      */
     suspend fun getCryptoById(id: String): Result<CryptoCurrency?>
+    
+    /**
+     * Update the cached cryptocurrency prices
+     * This is primarily used for simulation purposes
+     * 
+     * @param cryptoList List of cryptocurrencies with updated prices
+     */
+    suspend fun updateCachedPrices(cryptoList: List<CryptoCurrency>)
 }
