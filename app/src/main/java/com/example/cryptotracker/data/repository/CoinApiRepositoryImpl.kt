@@ -11,6 +11,7 @@ import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.model.CryptoDataProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Implementation of [CryptoRepository] that fetches data from CoinAPI
@@ -22,7 +23,14 @@ class CoinApiRepositoryImpl(
 ) : CryptoRepository {
     
     private val preferencesManager = PreferencesManager(context)
-    
+
+    private val cryptoCache = AtomicReference<List<CryptoCurrency>>(emptyList())
+
+
+    // Timestamp of last cache update
+    private var lastCacheUpdateTime: Long = 0
+
+
     /**
      * Get real-time cryptocurrency prices from CoinAPI
      * Falls back to cached data if API call fails or device is offline
@@ -88,7 +96,29 @@ class CoinApiRepositoryImpl(
             return@withContext getCachedCryptoById(id, e)
         }
     }
-    
+
+    /**
+     * Update the cached cryptocurrency prices
+     * This is primarily used for simulation purposes
+     *
+     * @param cryptoList List of cryptocurrencies with updated prices
+     */
+    override suspend fun updateCachedPrices(cryptoList: List<CryptoCurrency>) = withContext(Dispatchers.IO) {
+        Log.i("CryptoRepository", "Updating cache with ${cryptoList.size} simulated cryptocurrencies")
+        updateCache(cryptoList)
+    }
+
+    /**
+     * Update the internal cache with new data
+     *
+     * @param cryptoList List of cryptocurrencies to cache
+     */
+    private fun updateCache(cryptoList: List<CryptoCurrency>) {
+        cryptoCache.set(cryptoList)
+        lastCacheUpdateTime = System.currentTimeMillis()
+        Log.d("CryptoRepository", "Cache updated with ${cryptoList.size} cryptocurrencies")
+    }
+
     /**
      * Get cached cryptocurrency data
      * 

@@ -4,6 +4,8 @@
 
     <!-- Internet permission for API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permission for showing notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".CryptoTrackerApplication"
@@ -24,6 +26,18 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Notification Test Activity -->
+        <activity
+            android:name=".testing.NotificationTestActivity"
+            android:exported="true"
+            android:label="Notification Test"
+            android:theme="@style/Theme.CryptoTracker">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         

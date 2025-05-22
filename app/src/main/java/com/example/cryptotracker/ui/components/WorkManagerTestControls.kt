@@ -2,13 +2,16 @@ package com.example.cryptotracker.ui.components
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +30,7 @@ import androidx.work.WorkManager
 import com.example.cryptotracker.CryptoTrackerApplication
 import com.example.cryptotracker.data.util.PreferencesManager
 import com.example.cryptotracker.data.worker.CryptoPriceWorker
+import com.example.cryptotracker.util.AlertTestUtil
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,11 +49,13 @@ fun WorkManagerTestControls(
     
     var lastUpdateTime by remember { mutableStateOf("Never") }
     var workState by remember { mutableStateOf("Unknown") }
+    var alertCount by remember { mutableStateOf(0) }
     
-    // Update the last update time from preferences
+    // Update the last update time from preferences and get alert count
     LaunchedEffect(Unit) {
         updateLastUpdateTime(preferencesManager, onTimeUpdated = { lastUpdateTime = it })
         updateWorkState(context) { workState = it }
+        updateAlertCount(context) { alertCount = it }
     }
     
     Card(
@@ -79,6 +85,11 @@ fun WorkManagerTestControls(
                 style = MaterialTheme.typography.bodyMedium
             )
             
+            Text(
+                text = "Active Alerts: $alertCount",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
@@ -94,6 +105,55 @@ fun WorkManagerTestControls(
                 }
             ) {
                 Text(text = "Update Prices Now")
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Alert Testing",
+                style = MaterialTheme.typography.titleMedium
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = {
+                        // Add sample Bitcoin alert (BTC > $70,000)
+                        AlertTestUtil.createSampleBitcoinAlert(context)
+                        updateAlertCount(context) { alertCount = it }
+                    }
+                ) {
+                    Text(text = "Add BTC Alert")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Button(
+                    onClick = {
+                        // Add multiple sample alerts
+                        AlertTestUtil.createSampleAlerts(context)
+                        updateAlertCount(context) { alertCount = it }
+                    }
+                ) {
+                    Text(text = "Add Multiple")
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = {
+                    // Clear all alerts
+                    AlertTestUtil.clearAllAlerts(context)
+                    updateAlertCount(context) { alertCount = it }
+                }
+            ) {
+                Text(text = "Clear All Alerts")
             }
         }
     }
@@ -133,4 +193,27 @@ private fun updateWorkState(
                 onStateUpdated(states)
             }
         }
+}
+
+/**
+ * Update the alert count
+ */
+private fun updateAlertCount(
+    context: Context,
+    onCountUpdated: (Int) -> Unit
+) {
+    try {
+        val securePreferencesManager = CryptoTrackerApplication.getSecurePreferencesManager()
+        val alerts = securePreferencesManager.getAlerts()
+        onCountUpdated(alerts.size)
+    } catch (e: Exception) {
+        // If secure storage fails, try fallback
+        try {
+            val fallbackPreferencesManager = CryptoTrackerApplication.getFallbackPreferencesManager()
+            val alerts = fallbackPreferencesManager.getAlerts()
+            onCountUpdated(alerts.size)
+        } catch (e: Exception) {
+            onCountUpdated(0)
+        }
+    }
 }

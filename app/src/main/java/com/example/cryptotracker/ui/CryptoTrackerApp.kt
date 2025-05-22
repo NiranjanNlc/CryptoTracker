@@ -14,13 +14,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.cryptotracker.navigation.NavDestinations
 import com.example.cryptotracker.ui.screens.AlertsScreen
 import com.example.cryptotracker.ui.screens.AlertSetupScreen
+import com.example.cryptotracker.ui.screens.CryptoDetailScreen
 import com.example.cryptotracker.ui.screens.PricesScreen
 
 data class BottomNavItem(
@@ -105,13 +108,25 @@ fun CryptoTrackerApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(NavDestinations.Prices.route) {
-                PricesScreen()
+                PricesScreen(navController = navController)
             }
             composable(NavDestinations.Alerts.route) {
                 AlertsScreen(navController = navController)
             }
             composable(NavDestinations.AlertSetup.route) {
                 AlertSetupScreen(navController = navController)
+            }
+            composable(
+                route = NavDestinations.CryptoDetail.route,
+                arguments = listOf(
+                    navArgument("cryptoId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val cryptoId = backStackEntry.arguments?.getString("cryptoId") ?: ""
+                CryptoDetailScreen(
+                    cryptoId = cryptoId,
+                    navController = navController
+                )
             }
         }
     }

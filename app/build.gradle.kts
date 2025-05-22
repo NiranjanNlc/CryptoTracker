@@ -81,6 +81,9 @@ dependencies {
     // Navigation Compose
     implementation(libs.navigation.compose)
     
+    // MPAndroidChart for chart visualization
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    
     // Retrofit for API calls
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.moshi)

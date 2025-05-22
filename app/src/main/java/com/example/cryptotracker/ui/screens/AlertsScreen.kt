@@ -1,5 +1,6 @@
 package com.example.cryptotracker.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.cryptotracker.model.Alert
 import com.example.cryptotracker.model.CryptoCurrency
 import com.example.cryptotracker.navigation.NavDestinations
+import com.example.cryptotracker.testing.NotificationTestActivity
 import com.example.cryptotracker.ui.theme.CryptoGreen
 import com.example.cryptotracker.ui.theme.CryptoRed
 import com.example.cryptotracker.ui.viewmodel.AlertViewModel
@@ -54,6 +57,9 @@ fun AlertsScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
+    // For dropdown menu
+    var showMenu by remember { mutableStateOf(false) }
+    
     // Refresh alerts when screen is shown
     LaunchedEffect(Unit) {
         viewModel.refreshAlerts()
@@ -65,12 +71,45 @@ fun AlertsScreen(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Price Alerts",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Price Alerts",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    // Menu for testing options
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Options"
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Test Notifications") },
+                                onClick = {
+                                    showMenu = false
+                                    // Launch the notification test activity
+                                    val intent = Intent(context, NotificationTestActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         floatingActionButton = {
